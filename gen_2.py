@@ -38,6 +38,10 @@ acceleration = np.random.uniform(0.7, 1, 20)
 FRAMES_NO_TURN = 0
 FRAMES_NO_TURN_3D = 0
 
+VELOCITY_STATS =[]
+TURN_STATS = []
+POSITION_STATS = []
+
 with open("samples\\larger_sample.json") as f:
     data = json.load(f)
 radiusesX = data
@@ -145,6 +149,9 @@ def gen_daphnias(n, radiusesX, radiusesY, velocities):
     return daphnias
     
 def create_frame(ID, name, prev_frame, velocities, turn_rates, fps_coef):
+    global VELOCITY_STATS
+    global TURN_STATS
+    global POSITION_STATS
     fig, ax = plt.subplots(nrows=1, ncols=1)
     ax.set_xlim(0, 1280)
     ax.set_ylim(0, 1024)
@@ -158,6 +165,9 @@ def create_frame(ID, name, prev_frame, velocities, turn_rates, fps_coef):
             ells.append(patches.Ellipse(prev_frame[i][0], prev_frame[i][1]+random.choice(xFlucts), prev_frame[i][2], prev_frame[i][-1]))
         else:
             ells.append(patches.Ellipse(prev_frame[i][0], prev_frame[i][1], prev_frame[i][2], prev_frame[i][-1]))
+        VELOCITY_STATS.append(prev_frame[i][5])
+        TURN_STATS.append(prev_frame[i][-1])
+        POSITION_STATS.append(SEGMENTS[prev_frame[i][3]])
     for el in ells:
         ax.add_patch(el)
         el.set_clip_box(ax.bbox)
@@ -182,6 +192,18 @@ def create_clip(fps, objects, time, clip_name, velocities, turn_rates, radiusesX
             switch_LIGHT()
         else:
             create_frame(i, clip_name, dphns, velocities, turn_rates, fps_coef)
+    stats_dir = clip_name + "_stats"
+    if not os.path.exists(stats_dir):
+        os.makedirs(stats_dir)
+    fig, ax = plt.subplots(nrows=3, ncols=1)
+    ax[0].hist(VELOCITY_STATS, bins = 20, density = True)
+    ax[0].set_title("Velocity distribution, in pixels")
+    ax[1].hist(TURN_STATS, bins = 40, density = True)
+    ax[1].set_title("Orientation distribution, in degrees")
+    ax[2].hist(POSITION_STATS, bins = 3, density = True)
+    ax[2].set_title("Zones distributions, relative")
+    fig.savefig(stats_dir + "/" + clip_name + ".png")
+    plt.close()
     print("done")
 
 

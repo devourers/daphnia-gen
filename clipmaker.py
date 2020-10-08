@@ -16,4 +16,5 @@ out = cv2.VideoWriter('test.avi', cv2.VideoWriter_fourcc(*'DIVX'), 30, (width,he
  
 for i in range(len(img_array)):
 	out.write(img_array[i])
+
 out.release()
