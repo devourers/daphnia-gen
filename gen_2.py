@@ -64,11 +64,11 @@ def switch_LIGHT():
     LIGHT_ON += 1
     LIGHT_ON = LIGHT_ON % 2
     
-def frame_TRANSITION():
+def frame_TRANSITION(fps_coef):
     global FRAMES_NO_TURN
     global FRAMES_NO_TURN_3D
-    FRAMES_NO_TURN = (FRAMES_NO_TURN + 1) % 3
-    FRAMES_NO_TURN_3D = (FRAMES_NO_TURN_3D + 1) % 5
+    FRAMES_NO_TURN = (FRAMES_NO_TURN + 1) % (3*fps_coef)
+    FRAMES_NO_TURN_3D = (FRAMES_NO_TURN_3D + 1) % (3*fps_coef*2)
 
 def check_segment(daphnia):
     if daphnia[0][1] <= 60:
@@ -78,7 +78,7 @@ def check_segment(daphnia):
     else:
         daphnia[3] = 0    
 
-def gen_daphnia(x, y, velocities):
+def gen_daphnia(x, y, velocities, fps_coef):
     radiusX = 17
     #radiusX = random.choice(x)
     if radiusX > 23:
@@ -88,8 +88,8 @@ def gen_daphnia(x, y, velocities):
     if radiusY > 15:
         radiusY -= 3    
     velocity = random.choice(velocities)
-    if velocity > 10:
-        velocity = 10
+    if velocity > 10*fps_coef:
+        velocity = 10*fps_coef
     turn_rate = random.randint(0, 360)
     affected = random.choice([0, 1])  
     center = [random.randint(0, 1280), random.randint(0, 512)]
@@ -105,7 +105,7 @@ def gen_daphnia(x, y, velocities):
 def move_daphnia(daphnia, velocities, turn_rates, fps_coef):
     #v = random.choice(velocities)
     v = daphnia[5]
-    fluct = random.choice(velFlucts)
+    fluct = random.choice(velFlucts*fps_coef)
     v += fluct
     v *= (1 + random.choice(acceleration) * LIGHT_ON * daphnia[4])
     v *= fps_coef
@@ -113,39 +113,39 @@ def move_daphnia(daphnia, velocities, turn_rates, fps_coef):
     #frame_TRANSITION()
     if FRAMES_NO_TURN == 0:
         if abs((random.choice(turn_rates) * 180 / math.pi)) < 91:
-            daphnia[-1] += (random.choice(turn_rates) * 180 / math.pi) / fps_coef
+            daphnia[-1] += (random.choice(turn_rates) * 180 / math.pi) * fps_coef
     daphnia[0][0] += v * math.cos(daphnia[-1] * math.pi / 180)
     daphnia[0][1] += v * math.sin(daphnia[-1] * math.pi / 180)
     if daphnia[0][1] >= 30:
-        daphnia[0][1] -= 0.5 * max(0, 5-v)/5
+        daphnia[0][1] -= fps_coef * 0.5 * max(0, 5 * fps_coef - v)/(5*fps_coef)
     if daphnia[0][0] > 1280:
         daphnia[0][0] = 1275
         #daphnia[5] = 1
-        daphnia[-1] = random.choice(rightAngles) + random.choice(turn_rates)*180/math.pi
+        daphnia[-1] = random.choice(rightAngles) + random.choice(turn_rates)*180/math.pi * fps_coef
     if daphnia[0][1] > 1024:
         daphnia[0][1] = 1019
         #daphnia[5]  = 1
-        daphnia[-1] = random.choice(upAngles) + random.choice(turn_rates)*180/math.pi
+        daphnia[-1] = random.choice(upAngles) + random.choice(turn_rates)*180/math.pi * fps_coef
     if daphnia[0][0] <= 0:
         daphnia[0][0] = 5
         #daphnia[5] = 1
-        daphnia[-1] = random.choice(leftAngles) + random.choice(turn_rates)*180/math.pi
+        daphnia[-1] = random.choice(leftAngles) + random.choice(turn_rates)*180/math.pi * fps_coef
     if daphnia[0][1] <= 0:
         daphnia[0][1] = 5
         if daphnia[6] == 0:
-            daphnia[5] = 2
-        daphnia[-1] = random.choice(downAngles) + random.choice(turn_rates)*180/math.pi
+            daphnia[5] = 2 * fps_coef
+        daphnia[-1] = random.choice(downAngles) + random.choice(turn_rates)*180/math.pi * fps_coef
     if daphnia[3] == 1  and LIGHT_ON == 1 and daphnia[4] == 1:
         if daphnia[5] < 10:
-            daphnia[5] = 5
-        daphnia[-1] = random.choice([0, 90, 90, 90, 90, 180]) + random.choice(turn_rates)*180/math.pi
+            daphnia[5] = 5 * fps_coef
+        daphnia[-1] = random.choice(downAngles) + random.choice(turn_rates)*180/math.pi * fps_coef
         daphnia[6] = 1
     check_segment(daphnia)
     
-def gen_daphnias(n, radiusesX, radiusesY, velocities):
+def gen_daphnias(n, radiusesX, radiusesY, velocities, fps_coef):
     daphnias = []
     for i in range(n):
-        daphnias.append(gen_daphnia(radiusesX, radiusesY, velocities))
+        daphnias.append(gen_daphnia(radiusesX, radiusesY, velocities, fps_coef))
     return daphnias
     
 def create_frame(ID, name, prev_frame, velocities, turn_rates, fps_coef):
@@ -160,13 +160,13 @@ def create_frame(ID, name, prev_frame, velocities, turn_rates, fps_coef):
     ells = []
     for i in range(len(prev_frame)):
         move_daphnia(prev_frame[i], velocities, turn_rates, fps_coef)
-        frame_TRANSITION()
+        frame_TRANSITION(1/fps_coef)
         if FRAMES_NO_TURN_3D== 0:
-            ells.append(patches.Ellipse(prev_frame[i][0], prev_frame[i][1]+random.choice(xFlucts), prev_frame[i][2], prev_frame[i][-1]))
+            ells.append(patches.Ellipse(prev_frame[i][0], prev_frame[i][1]+random.choice(xFlucts*fps_coef), prev_frame[i][2], prev_frame[i][-1]))
         else:
             ells.append(patches.Ellipse(prev_frame[i][0], prev_frame[i][1], prev_frame[i][2], prev_frame[i][-1]))
         VELOCITY_STATS.append(prev_frame[i][5])
-        TURN_STATS.append(prev_frame[i][-1])
+        TURN_STATS.append(prev_frame[i][-1] % 360)
         POSITION_STATS.append(SEGMENTS[prev_frame[i][3]])
     for el in ells:
         ax.add_patch(el)
@@ -181,11 +181,12 @@ def create_frame(ID, name, prev_frame, velocities, turn_rates, fps_coef):
 
 def create_clip(fps, objects, time, clip_name, velocities, turn_rates, radiusesX, radiusesY, light):
     fps_coef = 30/fps
+    print(fps_coef)
     if not os.path.exists(clip_name):
         os.makedirs(clip_name)
-    dphns = gen_daphnias(objects, radiusesX, radiusesY, velocities)
+    dphns = gen_daphnias(objects, radiusesX, radiusesY, velocities, fps_coef)
     for i in range(fps*time):
-        frame_TRANSITION()
+        frame_TRANSITION(1/fps_coef)
         if i >= fps*(light-1):
             switch_LIGHT()
             create_frame(i, clip_name, dphns, velocities, turn_rates, fps_coef)
@@ -208,4 +209,4 @@ def create_clip(fps, objects, time, clip_name, velocities, turn_rates, radiusesX
 
 
 
-create_clip(30, 30, 10, "zlp", velocities, turn_rates, radiusesX, radiusesY, 5)
+create_clip(60, 30, 10, "60test", velocities, turn_rates, radiusesX, radiusesY, 5)
