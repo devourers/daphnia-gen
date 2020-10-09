@@ -17,7 +17,8 @@ STATUS = {0: 'Non-medicated', 1: 'Medicated'}
 
 LIGHT = {0: 'off.', 1: 'on.'}
 LIGHT_ON = 1
-LIGHT_DISTRIBUTION = generate_2d_gauss([0, 0], [[200000, 0], [0, 200000]])
+LIGHT_DISTRIBUTION = generate_2d_gauss([100, 100], [[200000, 0], [0, 200000]])
+x_light, y_light = np.mgrid[0:1280:1, 0:1024:1]
 
 # xFlucts = [0, -6, -7, -8]
 xFlucts = np.random.uniform(-8, 0, 20)
@@ -163,7 +164,7 @@ def create_frame(ID, name, prev_frame, velocities, turn_rates, fps_coef):
     ax.set_xlim(0, 1280)
     ax.set_ylim(0, 1024)
     plt.gca().set_aspect('equal', adjustable='box')
-    plt.figure(figsize=(1280 / 256, 1024 / 256), dpi=256)
+    plt.figure(figsize=(1280 / 80, 1024 / 80), dpi=256)
     ells = []
     for i in range(len(prev_frame)):
         move_daphnia(prev_frame[i], velocities, turn_rates, fps_coef)
@@ -183,6 +184,7 @@ def create_frame(ID, name, prev_frame, velocities, turn_rates, fps_coef):
     ID = str(ID)
     while len(ID) < 10:
         ID = '0' + ID
+    ax.contourf(x_light, y_light, LIGHT_DISTRIBUTION, aplha=0.1)
     fig.savefig(name + '/' + name + '_' + ID + '.png')
     plt.close('all')
 
