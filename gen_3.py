@@ -3,12 +3,14 @@ import math
 import os
 import random
 import tkinter as tk
+import tqdm
 
 import matplotlib.patches as patches
 import matplotlib.pyplot as plt
+import matplotlib.colors as colors
 import numpy as np
 
-from utils import generate_2d_gauss
+from utils import generate_2d_gauss, generate_light_distribution
 
 root = tk.Tk()
 
@@ -17,7 +19,8 @@ STATUS = {0: 'Non-medicated', 1: 'Medicated'}
 
 LIGHT = {0: 'off.', 1: 'on.'}
 LIGHT_ON = 1
-LIGHT_DISTRIBUTION = generate_2d_gauss([100, 100], [[200000, 0], [0, 200000]])
+#LIGHT_DISTRIBUTION = generate_2d_gauss([100, 100], [[100000, 0], [0, 100000]])
+LIGHT_DISTRIBUTION = generate_light_distribution((0,0), 100000000)
 x_light, y_light = np.mgrid[0:1280:1, 0:1024:1]
 
 # xFlucts = [0, -6, -7, -8]
@@ -94,7 +97,8 @@ def gen_daphnia(x, y, velocities, fps_coef):
     if velocity > 10 * fps_coef:
         velocity = 10 * fps_coef
     turn_rate = random.randint(0, 360)
-    affected = random.choice([0, 1])
+    #affected = random.choice([0, 1])
+    affected = 1
     center = [random.randint(0, 1280), random.randint(0, 512)]
     turned = 0
     if center[1] <= 60:
@@ -171,9 +175,10 @@ def create_frame(ID, name, prev_frame, velocities, turn_rates, fps_coef):
         frame_TRANSITION(1 / fps_coef)
         if FRAMES_NO_TURN_3D == 0:
             ells.append(patches.Ellipse(prev_frame[i][0], prev_frame[i][1] + random.choice(xFlucts * fps_coef),
-                                        prev_frame[i][2], prev_frame[i][-1]))
+                                        prev_frame[i][2], prev_frame[i][-1], color='grey'))
         else:
-            ells.append(patches.Ellipse(prev_frame[i][0], prev_frame[i][1], prev_frame[i][2], prev_frame[i][-1]))
+            ells.append(patches.Ellipse(prev_frame[i][0], prev_frame[i][1], prev_frame[i][2], prev_frame[i][-1],
+                                        color='grey'))
         VELOCITY_STATS.append(prev_frame[i][5])
         TURN_STATS.append(prev_frame[i][-1] % 360)
         POSITION_STATS.append(SEGMENTS[prev_frame[i][3]])
@@ -184,7 +189,9 @@ def create_frame(ID, name, prev_frame, velocities, turn_rates, fps_coef):
     ID = str(ID)
     while len(ID) < 10:
         ID = '0' + ID
-    ax.contourf(x_light, y_light, LIGHT_DISTRIBUTION, aplha=0.1)
+    #ax.contourf(x_light, y_light, LIGHT_DISTRIBUTION, cmap='gray',
+    #            norm=colors.LogNorm(vmin=LIGHT_DISTRIBUTION.min(), vmax=LIGHT_DISTRIBUTION.max()))
+    ax.contourf(x_light, y_light, LIGHT_DISTRIBUTION, cmap='gray')
     fig.savefig(name + '/' + name + '_' + ID + '.png')
     plt.close('all')
 
@@ -195,7 +202,7 @@ def create_clip(fps, objects, time, clip_name, velocities, turn_rates, radiusesX
     if not os.path.exists(clip_name):
         os.makedirs(clip_name)
     dphns = gen_daphnias(objects, radiusesX, radiusesY, velocities, fps_coef)
-    for i in range(fps * time):
+    for i in tqdm.tqdm(range(fps * time)):
         frame_TRANSITION(1 / fps_coef)
         if i >= fps * (light - 1):
             switch_LIGHT()
