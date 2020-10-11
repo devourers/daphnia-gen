@@ -20,8 +20,12 @@ STATUS = {0: 'Non-medicated', 1: 'Medicated'}
 LIGHT = {0: 'off.', 1: 'on.'}
 LIGHT_ON = 1
 #LIGHT_DISTRIBUTION = generate_2d_gauss([100, 100], [[100000, 0], [0, 100000]])
-LIGHT_DISTRIBUTION = generate_light_distribution((0,0), 100000000)
+LIGHT_INTENTISY = 1000
+global LIGHT_DISTRIBUTION
+LIGHT_DISTRIBUTION = generate_light_distribution((0,0), LIGHT_INTENTISY)
 x_light, y_light = np.mgrid[0:1280:1, 0:1024:1]
+LIGHT_MIN = 1e-10
+LIGHT_MAX = LIGHT_INTENTISY
 
 # xFlucts = [0, -6, -7, -8]
 xFlucts = np.random.uniform(-8, 0, 20)
@@ -66,6 +70,10 @@ def switch_LIGHT():
     global LIGHT_ON
     # LIGHT_ON += 1
     # LIGHT_ON = LIGHT_ON % 2
+
+def ENHANCE_LIGHT():
+    global LIGHT_DISTRIBUTION
+    LIGHT_DISTRIBUTION *= 100
 
 
 def frame_TRANSITION(fps_coef):
@@ -189,9 +197,12 @@ def create_frame(ID, name, prev_frame, velocities, turn_rates, fps_coef):
     ID = str(ID)
     while len(ID) < 10:
         ID = '0' + ID
+    ax.pcolormesh(x_light, y_light, LIGHT_DISTRIBUTION, cmap='gray',
+                norm=colors.LogNorm(vmin=LIGHT_MIN, vmax=LIGHT_MAX))
+
     #ax.contourf(x_light, y_light, LIGHT_DISTRIBUTION, cmap='gray',
-    #            norm=colors.LogNorm(vmin=LIGHT_DISTRIBUTION.min(), vmax=LIGHT_DISTRIBUTION.max()))
-    ax.contourf(x_light, y_light, LIGHT_DISTRIBUTION, cmap='gray')
+    #              norm=colors.LogNorm(vmin=LIGHT_MIN, vmax=LIGHT_MAX))
+
     fig.savefig(name + '/' + name + '_' + ID + '.png')
     plt.close('all')
 
@@ -204,10 +215,9 @@ def create_clip(fps, objects, time, clip_name, velocities, turn_rates, radiusesX
     dphns = gen_daphnias(objects, radiusesX, radiusesY, velocities, fps_coef)
     for i in tqdm.tqdm(range(fps * time)):
         frame_TRANSITION(1 / fps_coef)
-        if i >= fps * (light - 1):
-            switch_LIGHT()
+        if i == int(fps*time/3):
+            ENHANCE_LIGHT()
             create_frame(i, clip_name, dphns, velocities, turn_rates, fps_coef)
-            switch_LIGHT()
         else:
             create_frame(i, clip_name, dphns, velocities, turn_rates, fps_coef)
     stats_dir = clip_name + "_stats"
