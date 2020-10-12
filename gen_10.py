@@ -5,16 +5,23 @@ import random
 
 import matplotlib.patches as patches
 import matplotlib.pyplot as plt
+import matplotlib.image as mpimg
+import matplotlib.colors as colors
 import numpy as np
 
-from utils import generate_2d_gauss
+from utils import generate_2d_gauss, generate_light_distribution
 
 SEGMENTS = {0: 'center.', 1: 'cells.', 2: 'boundaries.'}
 STATUS = {0: 'Non-medicated', 1: 'Medicated'}
 
 LIGHT = {0: 'off.', 1: 'on.'}
 LIGHT_ON = 0
-LIGHT_DISTRIBUTION = generate_2d_gauss([0, 0], [[200000, 0], [0, 200000]])
+#LIGHT_DISTRIBUTION = generate_2d_gauss([100, 100], [[100000, 0], [0, 100000]])
+LIGHT_INTENTISY = 1000
+global LIGHT_DISTRIBUTION
+LIGHT_DISTRIBUTION = generate_light_distribution((0,0), LIGHT_INTENTISY)
+LIGHT_MIN = 1e-10
+LIGHT_MAX = LIGHT_INTENTISY
 x_light, y_light = np.mgrid[0:1280:1, 0:1024:1]
 
 xFlucts = np.random.uniform(-4, 0, 20)
@@ -28,12 +35,16 @@ bigPlane = np.random.normal(10, 1.25, 30)
 smallPlane = np.random.normal(5, 0.3, 30)
 launchAngles = np.random.normal(math.pi/2, math.pi/6, 180)
 
+
 leftAngles *= 180 / math.pi
 rightAngles *= 180 / math.pi
 downAngles *= 180 / math.pi
 upAngles *= 180 / math.pi
 
 acceleration = np.random.uniform(0.7, 1, 20)
+AFFECTED = np.random.uniform(0.3, 1, 40)
+xGenPos = np.random.uniform(10, 1180, 100)
+yGenPos = np.random.uniform(10, 512, 100)
 
 FRAMES_NO_TURN = 0
 FRAMES_NO_TURN_3D = 0
@@ -88,8 +99,8 @@ def gen_daphnia(velocities, fps_coef):
     if velocity > 10 * fps_coef:
         velocity = 10 * fps_coef
     turn_rate = random.randint(0, 360)
-    affected = random.choice([0, 1])
-    center = [random.randint(0, 1280), random.randint(0, 512)]
+    affected = random.choice(AFFECTED)
+    center = [int(random.choice(xGenPos)), int(random.choice(yGenPos))]
     turned = 0
     if center[1] <= 60:
         segment = 1
@@ -113,20 +124,20 @@ def move_daphnia(daphnia, velocities, turn_rates, fps_coef):
     daphnia[0][1] += v * math.sin(daphnia[-1] * math.pi / 180)
     if daphnia[0][1] >= 30:
         daphnia[0][1] -= fps_coef * 0.5 * max(0, 5 * fps_coef - v) / (5 * fps_coef)
-    if daphnia[0][0] > 1280:
-        daphnia[0][0] = 1275
+    if daphnia[0][0] > 1180:
+        daphnia[0][0] = 1175
         daphnia[-1] = random.choice(rightAngles) + random.choice(turn_rates) * 180 / math.pi * fps_coef
         
-    if daphnia[0][1] > 1024:
-        daphnia[0][1] = 1019
+    if daphnia[0][1] > 1000:
+        daphnia[0][1] = 995
         daphnia[-1] = random.choice(upAngles) + random.choice(turn_rates) * 180 / math.pi * fps_coef
         
-    if daphnia[0][0] <= 0:
-        daphnia[0][0] = 5
+    if daphnia[0][0] <= 20:
+        daphnia[0][0] = 25
         daphnia[-1] = random.choice(leftAngles) + random.choice(turn_rates) * 180 / math.pi * fps_coef
         
-    if daphnia[0][1] <= 0:
-        daphnia[0][1] = 5
+    if daphnia[0][1] <= 5:
+        daphnia[0][1] = 10
         if daphnia[6] == 0:
             daphnia[5] = 2 * fps_coef
         daphnia[-1] = random.choice(downAngles) + random.choice(turn_rates) * 180 / math.pi * fps_coef
@@ -150,11 +161,12 @@ def create_frame(ID, name, prev_frame, velocities, turn_rates, fps_coef):
     global VELOCITY_STATS
     global TURN_STATS
     global POSITION_STATS
-    fig, ax = plt.subplots(nrows=1, ncols=1)
+    fig, ax = plt.subplots(nrows=1, ncols=1, figsize=(1280 / 256, 1024 / 256), dpi=256)
     ax.set_xlim(0, 1280)
     ax.set_ylim(0, 1024)
-    plt.gca().set_aspect('equal', adjustable='box')
-    plt.figure(figsize=(1280 / 256, 1024 / 256), dpi=256)
+    ax.set_aspect('equal')
+    img = mpimg.imread('samples/bg_sample.png')
+    ax.imshow(img)
     ells = []
     for i in range(len(prev_frame)):
         move_daphnia(prev_frame[i], velocities, turn_rates, fps_coef)
@@ -171,12 +183,14 @@ def create_frame(ID, name, prev_frame, velocities, turn_rates, fps_coef):
         ax.add_patch(el)
         el.set_clip_box(ax.bbox)
         el.set_facecolor('black')
+        el.set_alpha(0.4)
     ID = str(ID)
     while len(ID) < 10:
         ID = '0' + ID
     ax.set_title("'" + name + "'@" + str(30/fps_coef) + " fps, light " + LIGHT[LIGHT_ON])
-    ax.contourf(x_light, y_light, LIGHT_DISTRIBUTION, alpha = 0.0 + 0.4*LIGHT_ON)
-    fig.savefig(name + '/' + name + '_' + ID + '.png')
+    #ax.contourf(x_light, y_light, LIGHT_DISTRIBUTION, alpha = 0.0 + 0.15*LIGHT_ON)
+    ax.pcolormesh(x_light, y_light, LIGHT_DISTRIBUTION, cmap='gray', alpha = 0.0 + 0.15*LIGHT_ON, norm=colors.LogNorm(vmin=LIGHT_MIN, vmax=LIGHT_MAX))    
+    fig.savefig(name + '/' + name + '_' + ID + '.png', dpi = 256)
     plt.close('all')
 
 
