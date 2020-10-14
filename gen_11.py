@@ -111,8 +111,8 @@ def switch_LIGHT():
 def frame_TRANSITION(fps_coef):
     global FRAMES_NO_TURN
     global FRAMES_NO_TURN_3D
-    FRAMES_NO_TURN = (FRAMES_NO_TURN + 1) % (3 * fps_coef)
-    FRAMES_NO_TURN_3D = (FRAMES_NO_TURN_3D + 1) % (3 * fps_coef * 2)
+    FRAMES_NO_TURN = (FRAMES_NO_TURN + 1) % (4 * fps_coef)
+    FRAMES_NO_TURN_3D = (FRAMES_NO_TURN_3D + 1) % (4 * fps_coef * 2)
 
 
 def check_segment(daphnia):
@@ -265,21 +265,27 @@ def create_frame(ID, name, prev_frame, velocities, turn_rates, fps_coef):
     LOW_STATS.append(LOW_ACCUM/LOW_COUNT)
 
 
-def create_clip(fps, objects, time, clip_name, velocities, turn_rates, light_on, light_off):
+def create_clip(fps, objects, time, clip_name, velocities, turn_rates, lights_on, lights_off):
     time_line = np.arange(0, time, 1/fps)
     fps_coef = 20 / fps
     print(fps_coef)
     if not os.path.exists(clip_name):
         os.makedirs(clip_name)
     dphns = gen_daphnias(objects, velocities, fps_coef)
+    j = 0
     for i in tqdm.tqdm(range(fps * time), position=0, leave=True):
         # print("Frame " + str(i+1) + "/" + str(fps*time))
         frame_TRANSITION(1 / fps_coef)
-        if (i == (light_on - 1) * fps) or (i == (light_off - 1) * fps):
+        if (i == (lights_on[(j % len(lights_on))] * fps)): 
             light_system.light_switch()
             create_frame(i, clip_name, dphns, velocities, turn_rates, fps_coef)
+        elif (i == (lights_off[(j % len(lights_off))]) * fps):
+            light_system.light_switch()
+            create_frame(i, clip_name, dphns, velocities, turn_rates, fps_coef)
+            j += 1
         else:
             create_frame(i, clip_name, dphns, velocities, turn_rates, fps_coef)
+            
     stats_dir = clip_name + "_stats"
     if not os.path.exists(stats_dir):
         os.makedirs(stats_dir)
@@ -312,36 +318,50 @@ def create_clip(fps, objects, time, clip_name, velocities, turn_rates, light_on,
             plots[j][i] = Ystats[i][j]
     for i in range(len(plots)):
         ax.plot(time_line, plots[i], c = 'black', alpha = 0.4, linewidth = 0.5)
-    light = patches.Rectangle(((light_on-1) , 0), (light_off - light_on), 1024, angle = 0.0)
-    ax.add_patch(light)
-    light.set_facecolor('yellow')
-    light.set_alpha(0.3)    
+    lights = []
+    for i in range(len(lights_on)):
+        light = patches.Rectangle(((lights_on[i]) , 0), (lights_off[i] - lights_on[i]), 1024, angle = 0.0)
+        lights.append(light)
+    for light in lights:
+        ax.add_patch(light)
+        light.set_facecolor('yellow')
+        light.set_alpha(0.3)    
     fig.savefig(stats_dir + "/" + clip_name + "_y_coord.png")
     plt.close('all')
     
-    fig, ax = plt.subplots(nrows = 2, ncols = 1)
-    ax[0].set_title("High mobility daphnias")
-    ax[0].set_aspect('auto')
-    ax[0].set_ylim(0, 15)
-    ax[0].plot(time_line, HIGH_STATS, c = "blue")
-    light = patches.Rectangle(((light_on-1) , 0), (light_off - light_on), 15, angle = 0.0)
-    ax[0].add_patch(light)
-    light.set_facecolor('yellow')
-    light.set_alpha(0.3)
+    fig, ax = plt.subplots()
+    ax.set_title("High mobility daphnias")
+    ax.set_aspect('auto')
+    ax.set_ylim(0, 15)
+    ax.plot(time_line, HIGH_STATS, c = "blue")
+    lights = []
+    for i in range(len(lights_on)):
+        light = patches.Rectangle(((lights_on[i]) , 0), (lights_off[i] - lights_on[i]), 15, angle = 0.0)
+        lights.append(light)
+    for light in lights:
+        ax.add_patch(light)
+        light.set_facecolor('yellow')
+        light.set_alpha(0.3)
+    fig.savefig(stats_dir + "/" + clip_name + "_high_mobility.png")
+    plt.close('all')    
     
-    ax[1].set_title("Low mobility daphnias")
-    ax[1].set_aspect('auto')
-    ax[1].set_ylim(0, 15)
-    ax[1].plot(time_line, LOW_STATS, c = "blue")
-    light = patches.Rectangle(((light_on-1) , 0), (light_off - light_on), 15, angle = 0.0)
-    ax[1].add_patch(light)
-    light.set_facecolor('yellow')
-    light.set_alpha(0.3)      
-    
-    fig.savefig(stats_dir + "/" + clip_name + "_velocity.png")
+    fig, ax = plt.subplots()
+    ax.set_title("Low mobility daphnias")
+    ax.set_aspect('auto')
+    ax.set_ylim(0, 15)
+    ax.plot(time_line, LOW_STATS, c = "blue")
+    lights = []
+    for i in range(len(lights_on)):
+        light = patches.Rectangle(((lights_on[i]) , 0), (lights_off[i] - lights_on[i]), 15, angle = 0.0)
+        lights.append(light)
+    for light in lights:
+        ax.add_patch(light)
+        light.set_facecolor('yellow')
+        light.set_alpha(0.3)        
+    fig.savefig(stats_dir + "/" + clip_name + "_low_mobility.png")
     plt.close('all')    
     print("done")
 
 
 if __name__ == '__main__':
-    create_clip(20, 30, 20, "60test", velocities, turn_rates, 5, 18)
+    create_clip(20, 30, 6, "60test", velocities, turn_rates, [1, 3], [2, 4])
