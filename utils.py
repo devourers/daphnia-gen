@@ -31,7 +31,7 @@ def generate_light_distribution(center, intencity, size=(1, 1), w=1280, h=1024):
     for i in range(size[0]):
         for j in range(size[1]):
             field[center[0] + i][center[1] + j] = intencity
-            light_source.append((i, j))
+            light_source.append((center[0] + i, center[1] + j))
     for i in range(h):
         for j in range(w):
             for light_point in light_source:
@@ -80,9 +80,9 @@ class LightSystem:
         self.current_light_distribution = np.random.uniform(low=0.7, high=1) * self.light_distribution * \
                                           self.light_enable_sequence[self.light_indexer]
 
-        self.current_light_distribution = np.uint8(self.current_light_distribution * 255)
+        self.current_light_distribution = self.current_light_distribution * 255
 
-    def increase_brightness(self, img, value=None):
+    def increase_brightness(self, img, value=None, exposition=True):
         self.light_modify_()
         hsv = cv2.cvtColor(img, cv2.COLOR_BGR2HSV)
         h, s, v = cv2.split(hsv)
@@ -92,9 +92,17 @@ class LightSystem:
             v[v > lim] = 255
             v[v <= lim] += value
         elif self.current_light_distribution is not None:
-            lim = (np.zeros(self.current_light_distribution.shape) + 255) - self.current_light_distribution
-            v[v > lim] = 255
-            v[v <= lim] += self.current_light_distribution[v <= lim]
+            if exposition:
+                max_brightness = np.zeros(self.current_light_distribution.shape) + 255
+                exposition_coeffs = (1*np.ones(max_brightness.shape) - v/max_brightness)
+                lim = max_brightness - exposition_coeffs * self.current_light_distribution
+                v[v > lim] = 255
+                v[v <= lim] += np.uint8(exposition_coeffs[v <= lim] * self.current_light_distribution[v <= lim])
+            else:
+                max_brightness = np.zeros(self.current_light_distribution.shape) + 255
+                lim = max_brightness - self.current_light_distribution
+                v[v > lim] = 255
+                v[v <= lim] += np.uint8(self.current_light_distribution[v <= lim])
 
         hsv = cv2.merge((h, s, v))
         return cv2.cvtColor(hsv, cv2.COLOR_HSV2RGB)
