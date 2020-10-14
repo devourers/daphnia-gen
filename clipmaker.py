@@ -14,7 +14,7 @@ def make_clip():
 
     size = (width, height)
 
-    out = cv2.VideoWriter('60test.avi', cv2.VideoWriter_fourcc(*'DIVX'), 60, (width, height))
+    out = cv2.VideoWriter('60test.avi', cv2.VideoWriter_fourcc(*'DIVX'), 20, (width, height))
 
     for i in range(len(img_array)):
         out.write(img_array[i])
