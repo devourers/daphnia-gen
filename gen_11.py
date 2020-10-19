@@ -258,23 +258,32 @@ def create_frame(ID, name, prev_frame, velocities, turn_rates, fps_coef):
     plt.margins(0,0)
     plt.gca().xaxis.set_major_locator(plt.NullLocator())
     plt.gca().yaxis.set_major_locator(plt.NullLocator())    
-    fig.savefig(name + '/' + name + '_' + ID + '.png', dpi=256, bbox_inches='tight', pad_inches = 0)
+    fig.savefig(name + '/frames/' + ID + '.png', dpi=256, bbox_inches='tight', pad_inches = 0)
     plt.close('all')
     Ystats.append(yFrame)
-    HIGH_STATS.append(HIGH_ACCUM/HIGH_COUNT)
-    LOW_STATS.append(LOW_ACCUM/LOW_COUNT)
-
-
+    HIGH_STATS.append(HIGH_ACCUM/(HIGH_COUNT+1))
+    LOW_STATS.append(LOW_ACCUM/(LOW_COUNT+1))
+    
 def create_clip(fps, objects, time, clip_name, velocities, turn_rates, lights_on, lights_off):
+    json_file = []
     time_line = np.arange(0, time, 1/fps)
     fps_coef = 20 / fps
-    print(fps_coef)
+    
     if not os.path.exists(clip_name):
         os.makedirs(clip_name)
+        
+    frames_dir = clip_name + "/frames"
+    if not os.path.exists(frames_dir):
+        os.makedirs(frames_dir) 
+    
     dphns = gen_daphnias(objects, velocities, fps_coef)
     j = 0
+    
     for i in tqdm.tqdm(range(fps * time), position=0, leave=True):
-        # print("Frame " + str(i+1) + "/" + str(fps*time))
+        curr = []
+        ID = str(i)
+        while len(ID) < 10:
+            ID = '0' + ID        
         frame_TRANSITION(1 / fps_coef)
         if (i == (lights_on[(j % len(lights_on))] * fps)): 
             light_system.light_switch()
@@ -285,27 +294,34 @@ def create_clip(fps, objects, time, clip_name, velocities, turn_rates, lights_on
             j += 1
         else:
             create_frame(i, clip_name, dphns, velocities, turn_rates, fps_coef)
-            
-    stats_dir = clip_name + "_stats"
+        for k in range(len(dphns)):
+            curr.append({'ID': k, 'center': dphns[k][0], 'longer': dphns[k][1], 'shorter': dphns[k][2], 'theta': dphns[k][-1]})
+        json_file.append({ID : curr})
+    
+    stats_dir = clip_name + "/stats"
     if not os.path.exists(stats_dir):
         os.makedirs(stats_dir)
-        
+
+    line = clip_name + "/gt.json"
+    with open(line, 'w') as f:
+        json.dump(json_file, f, ensure_ascii=False, indent=4)    
+    
     fig, ax = plt.subplots()
     ax.hist(VELOCITY_STATS, bins=20, density=True)
     ax.set_title("Velocity distribution, in pixels")
-    fig.savefig(stats_dir + "/" + clip_name + "_velocity_distribution.png")
+    fig.savefig(stats_dir + "/velocity_distribution.png")
     plt.close('all')
     
     fig, ax = plt.subplots()
     ax.hist(TURN_STATS, bins=40, density=True)
     ax.set_title("Orientation distribution, in degrees")
-    fig.savefig(stats_dir + "/" + clip_name + "_orientation_distribution.png")
+    fig.savefig(stats_dir + "/orientation_distribution.png")
     plt.close('all')
     
     fig, ax = plt.subplots()
     ax.hist(POSITION_STATS, bins=3, density=True)
     ax.set_title("Zones distributions, relative")
-    fig.savefig(stats_dir + "/" + clip_name + "_sector_distribution.png")
+    fig.savefig(stats_dir + "/sector_distribution.png")
     plt.close('all')
     
     fig, ax = plt.subplots()
@@ -326,7 +342,7 @@ def create_clip(fps, objects, time, clip_name, velocities, turn_rates, lights_on
         ax.add_patch(light)
         light.set_facecolor('yellow')
         light.set_alpha(0.3)    
-    fig.savefig(stats_dir + "/" + clip_name + "_y_coord.png")
+    fig.savefig(stats_dir + "/y_coord.png")
     plt.close('all')
     
     fig, ax = plt.subplots()
@@ -342,7 +358,7 @@ def create_clip(fps, objects, time, clip_name, velocities, turn_rates, lights_on
         ax.add_patch(light)
         light.set_facecolor('yellow')
         light.set_alpha(0.3)
-    fig.savefig(stats_dir + "/" + clip_name + "_high_mobility.png")
+    fig.savefig(stats_dir + "/high_mobility.png")
     plt.close('all')    
     
     fig, ax = plt.subplots()
@@ -358,10 +374,10 @@ def create_clip(fps, objects, time, clip_name, velocities, turn_rates, lights_on
         ax.add_patch(light)
         light.set_facecolor('yellow')
         light.set_alpha(0.3)        
-    fig.savefig(stats_dir + "/" + clip_name + "_low_mobility.png")
+    fig.savefig(stats_dir + "/low_mobility.png")
     plt.close('all')    
     print("done")
 
 
 if __name__ == '__main__':
-    create_clip(20, 30, 6, "60test", velocities, turn_rates, [1, 3], [2, 4])
+    create_clip(20, 5, 5, "dirtest", velocities, turn_rates, [1], [3])
