@@ -50,8 +50,16 @@ upAngles *= 180 / math.pi
 
 acceleration = np.random.uniform(0.7, 1, 20)
 AFFECTED = np.random.uniform(0.3, 1, 40)
-xGenPos = np.random.uniform(10, 1180, 100)
-yGenPos = np.random.uniform(10, 512, 100)
+#xGenPos = np.random.uniform(10, 1180, 1000)
+xGenPos = np.random.normal(585, 282.5, 100)
+yGenPos = np.random.normal(251, 120.5, 100)
+#yGenPos = np.random.uniform(10, 512, 1000)
+heatmap_gen = np.ones((1024, 1280), dtype = np.float32)
+
+for i in range(len(xGenPos)):
+    for j in range(len(yGenPos)):
+        heatmap_gen[j-1][i-1] += 10
+print(heatmap_gen)
 
 FRAMES_NO_TURN = 0
 FRAMES_NO_TURN_3D = 0
@@ -375,8 +383,17 @@ def create_clip(fps, objects, time, clip_name, velocities, turn_rates, lights_on
         light.set_alpha(0.3)        
     fig.savefig(stats_dir + "/low_mobility.png")
     plt.close('all')    
+    
+    
+    fig, ax = plt.subplots()
+    im = ax.imshow(heatmap_gen, cmap = 'hot', interpolation='nearest', vmin = 0, vmax = 100)
+    cbar_ax = fig.add_axes([0.9, 0.15, 0.0, 0.1])
+    cbar_ax.set_xlabel('propability', labelpad=20)    
+    fig.colorbar(im, cax=cbar_ax)
+    fig.savefig(stats_dir + "/spawn_map.png")
+    
     print("Frames, stats and JSON located at '" + clip_name + "' folder")
 
 
 if __name__ == '__main__':
-    create_clip(20, 5, 5, "dirtest", velocities, turn_rates, [1], [3])
+    create_clip(20, 3, 1, "dirtest", velocities, turn_rates, [1], [3])
