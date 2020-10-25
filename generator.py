@@ -8,6 +8,7 @@ import matplotlib.patches as patches
 import matplotlib.pyplot as plt
 import numpy as np
 import tqdm
+import seaborn as sns
 
 from utils import LightSystem
 
@@ -51,15 +52,24 @@ upAngles *= 180 / math.pi
 acceleration = np.random.uniform(0.7, 1, 20)
 AFFECTED = np.random.uniform(0.3, 1, 40)
 #xGenPos = np.random.uniform(10, 1180, 1000)
-xGenPos = np.random.normal(585, 282.5, 100)
-yGenPos = np.random.normal(251, 120.5, 100)
+xGenPos = np.random.normal(585, 141.25, 1000)
+yGenPos = np.random.normal(251, 60.25, 1000)
 #yGenPos = np.random.uniform(10, 512, 1000)
-heatmap_gen = np.ones((1024, 1280), dtype = np.float32)
+heatmap_gen = np.zeros((1024, 1280), dtype = np.float32)
+total_heatmap = np.zeros((1024, 1280), dtype = np.float32)
 
-for i in range(len(xGenPos)):
-    for j in range(len(yGenPos)):
-        heatmap_gen[j-1][i-1] += 10
-print(heatmap_gen)
+for x in xGenPos:
+    for y in yGenPos:
+        heatmap_gen[1022 - (int(y) - 1)][int(x + 1)] += 1
+        heatmap_gen[1022 - (int(y) - 1)][int(x - 1)] += 1
+        heatmap_gen[1022 - (int(y) - 1)][int(x)] += 1
+        heatmap_gen[1022 - (int(y - 1) - 1)][int(x + 1)] += 1 
+        heatmap_gen[1022 - (int(y - 1) - 1)][int(x - 1)] += 1
+        heatmap_gen[1022 - (int(y - 1) - 1)][int(x)] += 1
+        heatmap_gen[1022 - (int(y + 1) - 1)][int(x + 1)] += 1
+        heatmap_gen[1022 - (int(y + 1) - 1)][int(x - 1)] += 1
+        heatmap_gen[1022 - (int(y + 1) - 1)][int(x)] += 1
+
 
 FRAMES_NO_TURN = 0
 FRAMES_NO_TURN_3D = 0
@@ -236,6 +246,7 @@ def create_frame(ID, name, prev_frame, velocities, turn_rates, fps_coef):
         else:
             MARKED = 1
             HIGH_COUNT += 1
+        total_heatmap[int(prev_frame[i][0][1])-1][int(prev_frame[i][0][0])] += 1
         move_daphnia(prev_frame[i], velocities, turn_rates, fps_coef)
         frame_TRANSITION(1 / fps_coef)
         if FRAMES_NO_TURN_3D == 0:
@@ -384,16 +395,15 @@ def create_clip(fps, objects, time, clip_name, velocities, turn_rates, lights_on
     fig.savefig(stats_dir + "/low_mobility.png")
     plt.close('all')    
     
+    ax = sns.heatmap(heatmap_gen, annot = False, yticklabels=False, xticklabels=False)
+    ax.tick_params(left=False, bottom=False)
+    ax.figure.savefig(stats_dir + "/spawn_map.png")
     
-    fig, ax = plt.subplots()
-    im = ax.imshow(heatmap_gen, cmap = 'hot', interpolation='nearest', vmin = 0, vmax = 100)
-    cbar_ax = fig.add_axes([0.9, 0.15, 0.0, 0.1])
-    cbar_ax.set_xlabel('propability', labelpad=20)    
-    fig.colorbar(im, cax=cbar_ax)
-    fig.savefig(stats_dir + "/spawn_map.png")
-    
+    ax = sns.heatmap(total_heatmap, annot = False, yticklabels=False, xticklabels=False)
+    ax.tick_params(left=False, bottom=False)
+    ax.figure.savefig(stats_dir + "/heatmap.png")    
     print("Frames, stats and JSON located at '" + clip_name + "' folder")
 
 
 if __name__ == '__main__':
-    create_clip(20, 3, 1, "dirtest", velocities, turn_rates, [1], [3])
+    create_clip(20, 30, 10, "dirtest", velocities, turn_rates, [3], [7])
