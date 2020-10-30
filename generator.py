@@ -15,6 +15,7 @@ from utils import LightSystem
 BG_IMG = cv2.imread('samples/bg_sample.png')
 SEGMENTS = {0: 'center.', 1: 'cells.', 2: 'boundaries.'}
 STATUS = {0: 'Non-medicated', 1: 'Medicated'}
+GENDER = ['MALE', 'FEMALE']
 
 LIGHT = {0: 'off.', 1: 'on.'}
 LIGHT_ON = 0
@@ -144,6 +145,8 @@ def check_segment(daphnia):
 def gen_daphnia(velocities, fps_coef):
     radiusX = random.choice(bigPlane)
     radiusY = random.choice(smallPlane)
+    if random.choice(GENDER) == 'FEMALE':
+        radiusY += 1.7
     velocity = random.choice(velocities)
     if velocity > 10 * fps_coef:
         velocity = 10 * fps_coef
@@ -180,8 +183,8 @@ def move_daphnia(daphnia, velocities, turn_rates, fps_coef):
     
     daphnia[0][0] += v * math.cos(daphnia[-1] * math.pi / 180)
     daphnia[0][1] += v * math.sin(daphnia[-1] * math.pi / 180)
-    if daphnia[0][1] >= 30:
-        daphnia[0][1] -= fps_coef * 0.5 * max(0, 5 * fps_coef - v) / (5 * fps_coef)
+    #if daphnia[0][1] >= 30:
+    daphnia[0][1] -= fps_coef * 0.5 * max(0, 5 * fps_coef - v) / (5 * fps_coef)
     if daphnia[0][0] > 1180:
         daphnia[0][0] = 1175
         daphnia[-1] = random.choice(rightAngles) + random.choice(turn_rates) * 180 / math.pi * fps_coef
@@ -240,6 +243,7 @@ def create_frame(ID, name, prev_frame, velocities, turn_rates, fps_coef):
         ax.imshow(BG_IMG)"""
     ells = []
     for i in range(len(prev_frame)):
+        curr = []
         if prev_frame[i][4] < 0.8:
             MARKED = 2
             LOW_COUNT += 1
@@ -250,20 +254,36 @@ def create_frame(ID, name, prev_frame, velocities, turn_rates, fps_coef):
         move_daphnia(prev_frame[i], velocities, turn_rates, fps_coef)
         frame_TRANSITION(1 / fps_coef)
         if FRAMES_NO_TURN_3D == 0:
-            ells.append(patches.Ellipse(prev_frame[i][0], prev_frame[i][1] + random.choice(xFlucts * fps_coef),
+            curr.append(patches.Ellipse(prev_frame[i][0], prev_frame[i][1] + random.choice(xFlucts * fps_coef),
                                         prev_frame[i][2] + random.choice(yFlucts * fps_coef), prev_frame[i][-1]))
+            curr.append(patches.Ellipse(prev_frame[i][0], prev_frame[i][1] - 4 + random.choice(xFlucts * fps_coef)*2 ,
+                                        prev_frame[i][2]/3.2, prev_frame[i][-1]))
+            curr.append(patches.Ellipse(prev_frame[i][0], prev_frame[i][1] + random.choice(xFlucts * fps_coef)*2 ,
+                                        prev_frame[i][2]/2.5, prev_frame[i][-1]))
+            ells.append(curr)
         else:
-            ells.append(patches.Ellipse(prev_frame[i][0], prev_frame[i][1], prev_frame[i][2], prev_frame[i][-1]))
+            curr.append(patches.Ellipse(prev_frame[i][0], prev_frame[i][1], prev_frame[i][2], prev_frame[i][-1]))
+            curr.append(patches.Ellipse(prev_frame[i][0], prev_frame[i][1] - 4, prev_frame[i][2]/3.2, prev_frame[i][-1]))
+            curr.append(patches.Ellipse(prev_frame[i][0], prev_frame[i][1], prev_frame[i][2]/2.5, prev_frame[i][-1]))
+            ells.append(curr)
         VELOCITY_STATS.append(prev_frame[i][5])
         TURN_STATS.append(prev_frame[i][-1] % 360)
         POSITION_STATS.append(SEGMENTS[prev_frame[i][3]])
         yFrame.append(prev_frame[i][0][1])
 
     for el in ells:
-        ax.add_patch(el)
-        el.set_clip_box(ax.bbox)
-        el.set_facecolor('black')
-        el.set_alpha(0.4)
+        ax.add_patch(el[0])
+        el[0].set_clip_box(ax.bbox)
+        el[0].set_facecolor('black')
+        el[0].set_alpha(0.3)
+        ax.add_patch(el[2])
+        el[2].set_clip_box(ax.bbox)
+        el[2].set_facecolor('black')
+        el[2].set_alpha(0.4)
+        ax.add_patch(el[1])
+        el[1].set_clip_box(ax.bbox)
+        el[1].set_facecolor('black')
+        el[1].set_alpha(0.3)        
     ID = str(ID)
     while len(ID) < 10:
         ID = '0' + ID
