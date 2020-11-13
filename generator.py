@@ -326,15 +326,24 @@ def create_clip(fps, objects, time, clip_name, velocities, turn_rates, lights_on
         if (i == (lights_on[(j % len(lights_on))] * fps)): 
             light_system.light_switch()
             create_frame(i, clip_name, dphns, velocities, turn_rates, fps_coef)
+            print(dphns[k])
+            for k in range(len(dphns)):
+                curr.append({'ID': k, 'center': [dphns[k][0][0], dphns[k][0][1]], 'longer': dphns[k][1], 'shorter': dphns[k][2], 'theta': dphns[k][-1]})
+            json_file.append({ID : curr})
         elif (i == (lights_off[(j % len(lights_off))]) * fps):
             light_system.light_switch()
             create_frame(i, clip_name, dphns, velocities, turn_rates, fps_coef)
             j += 1
+            print(dphns)
+            for k in range(len(dphns)):
+                curr.append({'ID': k, 'center': [dphns[k][0][0], dphns[k][0][1]], 'longer': dphns[k][1], 'shorter': dphns[k][2], 'theta': dphns[k][-1]})
+            json_file.append({ID : curr})
         else:
             create_frame(i, clip_name, dphns, velocities, turn_rates, fps_coef)
-        for k in range(len(dphns)):
-            curr.append({'ID': k, 'center': dphns[k][0], 'longer': dphns[k][1], 'shorter': dphns[k][2], 'theta': dphns[k][-1]})
-        json_file.append({ID : curr})
+            print(dphns)
+            for k in range(len(dphns)):
+                curr.append({'ID': k, 'center': [dphns[k][0][0], dphns[k][0][1]], 'longer': dphns[k][1], 'shorter': dphns[k][2], 'theta': dphns[k][-1]})
+            json_file.append({ID : curr})
     
     stats_dir = clip_name + "/stats"
     if not os.path.exists(stats_dir):
