@@ -105,7 +105,7 @@ class LightSystem:
                 v[v <= lim] += np.uint8(self.current_light_distribution[v <= lim])
 
         hsv = cv2.merge((h, s, v))
-        return cv2.cvtColor(hsv, cv2.COLOR_HSV2RGB)
+        return cv2.flip(cv2.cvtColor(hsv, cv2.COLOR_HSV2BGR), 0)
 
 
 if __name__ == '__main__':
