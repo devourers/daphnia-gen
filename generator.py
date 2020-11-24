@@ -2,7 +2,7 @@ import json
 import math
 import os
 import random
-
+import daph_gallery
 import cv2
 import matplotlib.patches as patches
 import matplotlib.pyplot as plt
@@ -12,7 +12,7 @@ import seaborn as sns
 
 from utils import LightSystem
 
-BG_IMG = cv2.imread('samples/bg_sample.png')
+BG_IMG = cv2.imread('samples/bg_sample.png', cv2.IMREAD_UNCHANGED)
 SEGMENTS = {0: 'center.', 1: 'cells.', 2: 'boundaries.'}
 STATUS = {0: 'Non-medicated', 1: 'Medicated'}
 GENDER = ['MALE', 'FEMALE']
@@ -134,7 +134,7 @@ def frame_TRANSITION(fps_coef):
 
 
 def check_segment(daphnia):
-    if daphnia[0][1] <= 60:
+    if daphnia[0][1] >= 964:
         daphnia[3] = 1
     elif daphnia[0][0] <= 50 or daphnia[0][0] >= 1160:
         daphnia[3] = 2
@@ -145,14 +145,19 @@ def check_segment(daphnia):
 def gen_daphnia(velocities, fps_coef):
     radiusX = random.choice(bigPlane)
     radiusY = random.choice(smallPlane)
-    if random.choice(GENDER) == 'FEMALE':
-        radiusY += 1.7
+    #if radiusX > 11:
+    #    radiusX = random.choice([9, 10, 11, 8])
+    #if radiusX/radiusY >= 1.2:
+    #    radiuxY = radiusX / 1
+    #if random.choice(GENDER) == 'FEMALE':
+    #    radiusY += 3.5
+    radiusY = radiusX
     velocity = random.choice(velocities)
     if velocity > 10 * fps_coef:
         velocity = 10 * fps_coef
     turn_rate = random.randint(0, 360)
     affected = random.choice(AFFECTED)
-    center = [int(random.choice(xGenPos)), int(random.choice(yGenPos))]
+    center = [int(random.choice(xGenPos)), 1024 - int(random.choice(yGenPos))]
     turned = 0
     if center[1] <= 60:
         segment = 1
@@ -212,12 +217,13 @@ def move_daphnia(daphnia, velocities, turn_rates, fps_coef):
 
 
 
-def gen_daphnias(n, velocities, fps_coef):
+def gen_daphnias(n, velocities, fps_coef, name):
     daphnias = []
     for i in range(n):
         daphnias.append(gen_daphnia(velocities, fps_coef))
+    for i in range(len(daphnias)):
+        daph_gallery.create_daphnia_image(i, name, daphnias[i][1]/15, daphnias[i][2]/15, 1337)
     return daphnias
-
 
 def create_frame(ID, name, prev_frame, velocities, turn_rates, fps_coef):
     yFrame = []
@@ -236,12 +242,15 @@ def create_frame(ID, name, prev_frame, velocities, turn_rates, fps_coef):
     ax.set_xlim(0, 1280)
     ax.set_ylim(0, 1024)
     ax.set_aspect('equal')
-    ax.imshow(light_system.increase_brightness(BG_IMG.copy()))
+    light_system.increase_brightness(BG_IMG.copy())
     """if LIGHT_ON:
         ax.imshow(increase_brightness(BG_IMG.copy(), light_distribution=LIGHT_DISTRIBUTION))
     else:
         ax.imshow(BG_IMG)"""
     ells = []
+    #frame_TRANSITION(1 / fps_coef)
+    curr_frame = BG_IMG.copy()
+    curr_frame = cv2.cvtColor(curr_frame, cv2.COLOR_RGB2RGBA)
     for i in range(len(prev_frame)):
         curr = []
         if prev_frame[i][4] < 0.8:
@@ -252,7 +261,28 @@ def create_frame(ID, name, prev_frame, velocities, turn_rates, fps_coef):
             HIGH_COUNT += 1
         total_heatmap[int(prev_frame[i][0][1])-1][int(prev_frame[i][0][0])] += 1
         move_daphnia(prev_frame[i], velocities, turn_rates, fps_coef)
-        frame_TRANSITION(1 / fps_coef)
+           
+        curr_dphn = cv2.imread(name + '/daphnia_gallery/' + str(i) + ".png", cv2.IMREAD_UNCHANGED)
+        curr_mask = curr_dphn[:,:,3] == 0
+        curr_dphn = 255 - curr_dphn
+        curr_dphn[curr_mask] = [0, 0, 0, 0]
+        img_center = tuple(np.array(curr_dphn.shape[1::-1]) / 2)
+        rot_mat = cv2.getRotationMatrix2D(img_center, 180 - prev_frame[i][-1], 1.0)
+        height, width = (curr_dphn.shape[0] , curr_dphn.shape[1])
+        dst_mat = np.zeros((height, width, 4), np.uint8)
+        size = (width, height)
+        curr_dphn_f = cv2.warpAffine(curr_dphn, rot_mat, size, flags=cv2.INTER_LINEAR, borderMode=cv2.BORDER_TRANSPARENT)
+        if prev_frame[i][3] == 0:
+            curr_dphn_f = curr_dphn_f * 0.5
+        elif prev_frame[i][3] == 1:
+            curr_dphn_f = curr_dphn_f * 0.2
+        else:
+            curr_dphn_f = curr_dphn_f * 0.35
+        temp = np.zeros((1024, 1280, 4), np.float32)
+        temp[int(prev_frame[i][0][1]):int(prev_frame[i][0][1]) + curr_dphn_f.shape[0], int(prev_frame[i][0][0]):int(prev_frame[i][0][0]) + curr_dphn_f.shape[1]] = curr_dphn_f
+        curr_frame = np.float32(curr_frame)
+        curr_frame -= temp
+        '''
         if FRAMES_NO_TURN_3D == 0:
             curr.append(patches.Ellipse(prev_frame[i][0], prev_frame[i][1] + random.choice(xFlucts * fps_coef),
                                         prev_frame[i][2] + random.choice(yFlucts * fps_coef), prev_frame[i][-1]))
@@ -266,11 +296,13 @@ def create_frame(ID, name, prev_frame, velocities, turn_rates, fps_coef):
             curr.append(patches.Ellipse(prev_frame[i][0], prev_frame[i][1] - 4, prev_frame[i][2]/3.2, prev_frame[i][-1]))
             curr.append(patches.Ellipse(prev_frame[i][0], prev_frame[i][1], prev_frame[i][2]/2.5, prev_frame[i][-1]))
             ells.append(curr)
+        '''
+        
         VELOCITY_STATS.append(prev_frame[i][5])
         TURN_STATS.append(prev_frame[i][-1] % 360)
         POSITION_STATS.append(SEGMENTS[prev_frame[i][3]])
         yFrame.append(prev_frame[i][0][1])
-
+        '''
     for el in ells:
         ax.add_patch(el[0])
         el[0].set_clip_box(ax.bbox)
@@ -283,21 +315,25 @@ def create_frame(ID, name, prev_frame, velocities, turn_rates, fps_coef):
         ax.add_patch(el[1])
         el[1].set_clip_box(ax.bbox)
         el[1].set_facecolor('black')
-        el[1].set_alpha(0.3)        
+        el[1].set_alpha(0.3)      
+        '''
     ID = str(ID)
     while len(ID) < 10:
         ID = '0' + ID
+    #ax.imshow(light_system.increase_brightness(BG_IMG.copy()))
+    #curr_frame = light_system.increase_brightness(cv2.cvtColor(curr_frame, cv2.COLOR_RGBA2RGB))
     #ax.set_title("'" + name + "'@" + str(30 / fps_coef) + " fps, light " + LIGHT[light_system.light_enabled])
     # ax.contourf(x_light, y_light, LIGHT_DISTRIBUTION, alpha = 0.0 + 0.15*LIGHT_ON)
     # ax.pcolormesh(x_light, y_light, LIGHT_DISTRIBUTION, cmap='gray', alpha = 0.0 + 0.15*LIGHT_ON, norm=colors.LogNorm(vmin=LIGHT_MIN, vmax=LIGHT_MAX))
-    plt.gca().set_axis_off()
-    plt.subplots_adjust(top = 1, bottom = 0, right = 1, left = 0, 
-                hspace = 0, wspace = 0)
-    plt.margins(0,0)
-    plt.gca().xaxis.set_major_locator(plt.NullLocator())
-    plt.gca().yaxis.set_major_locator(plt.NullLocator())    
-    fig.savefig(name + '/frames/' + ID + '.png', dpi=256, bbox_inches='tight', pad_inches = 0)
+    #plt.gca().set_axis_off()
+    #plt.subplots_adjust(top = 1, bottom = 0, right = 1, left = 0, 
+                #hspace = 0, wspace = 0)
+    #plt.margins(0,0)
+    #plt.gca().xaxis.set_major_locator(plt.NullLocator())
+    #plt.gca().yaxis.set_major_locator(plt.NullLocator())    
+    #fig.savefig(name + '/frames/' + ID + '.png', dpi=256, bbox_inches='tight', pad_inches = 0)
     plt.close('all')
+    cv2.imwrite(name + '/frames/' + ID + '.png', curr_frame)
     Ystats.append(yFrame)
     HIGH_STATS.append(HIGH_ACCUM/(HIGH_COUNT+1))
     LOW_STATS.append(LOW_ACCUM/(LOW_COUNT+1))
@@ -312,9 +348,13 @@ def create_clip(fps, objects, time, clip_name, velocities, turn_rates, lights_on
         
     frames_dir = clip_name + "/frames"
     if not os.path.exists(frames_dir):
-        os.makedirs(frames_dir) 
+        os.makedirs(frames_dir)
+        
+    gallery_dir = clip_name + "/daphnia_gallery"
+    if not os.path.exists(gallery_dir):
+        os.makedirs(gallery_dir)    
     
-    dphns = gen_daphnias(objects, velocities, fps_coef)
+    dphns = gen_daphnias(objects, velocities, fps_coef, clip_name)
     j = 0
     
     for i in tqdm.tqdm(range(fps * time), position=0, leave=True):
