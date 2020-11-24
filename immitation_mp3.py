@@ -1,6 +1,6 @@
-import gen_3
+import generator
 import clipmaker
 
-gen_3.create_clip(60, 30, 20, "60test", gen_3.velocities, gen_3.turn_rates, gen_3.radiusesX, gen_3.radiusesY, 5)
+generator.create_clip(20, 30, 5, "60test", generator.velocities, generator.turn_rates,  [1], [3])
 
 clipmaker.make_clip()
