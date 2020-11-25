@@ -58,7 +58,7 @@ yGenPos = np.random.normal(251, 60.25, 1000)
 #yGenPos = np.random.uniform(10, 512, 1000)
 heatmap_gen = np.zeros((1024, 1280), dtype = np.float32)
 total_heatmap = np.zeros((1024, 1280), dtype = np.float32)
-
+'''
 for x in xGenPos:
     for y in yGenPos:
         heatmap_gen[1022 - (int(y) - 1)][int(x + 1)] += 1
@@ -70,7 +70,7 @@ for x in xGenPos:
         heatmap_gen[1022 - (int(y + 1) - 1)][int(x + 1)] += 1
         heatmap_gen[1022 - (int(y + 1) - 1)][int(x - 1)] += 1
         heatmap_gen[1022 - (int(y + 1) - 1)][int(x)] += 1
-
+'''
 
 FRAMES_NO_TURN = 0
 FRAMES_NO_TURN_3D = 0
@@ -144,14 +144,9 @@ def check_segment(daphnia):
 
 def gen_daphnia(velocities, fps_coef):
     radiusX = random.choice(bigPlane)
+    radiusX = 10
     radiusY = random.choice(smallPlane)
-    #if radiusX > 11:
-    #    radiusX = random.choice([9, 10, 11, 8])
-    #if radiusX/radiusY >= 1.2:
-    #    radiuxY = radiusX / 1
-    #if random.choice(GENDER) == 'FEMALE':
-    #    radiusY += 3.5
-    radiusY = radiusX
+    radiusY = 5
     velocity = random.choice(velocities)
     if velocity > 10 * fps_coef:
         velocity = 10 * fps_coef
@@ -250,7 +245,7 @@ def create_frame(ID, name, prev_frame, velocities, turn_rates, fps_coef):
     ells = []
     #frame_TRANSITION(1 / fps_coef)
     curr_frame = BG_IMG.copy()
-    curr_frame = cv2.cvtColor(curr_frame, cv2.COLOR_RGB2RGBA)
+    curr_frame = cv2.cvtColor(curr_frame, cv2.COLOR_RGB2GRAY)
     for i in range(len(prev_frame)):
         curr = []
         if prev_frame[i][4] < 0.8:
@@ -262,26 +257,12 @@ def create_frame(ID, name, prev_frame, velocities, turn_rates, fps_coef):
         total_heatmap[int(prev_frame[i][0][1])-1][int(prev_frame[i][0][0])] += 1
         move_daphnia(prev_frame[i], velocities, turn_rates, fps_coef)
            
-        curr_dphn = cv2.imread(name + '/daphnia_gallery/' + str(i) + ".png", cv2.IMREAD_UNCHANGED)
-        curr_mask = curr_dphn[:,:,3] == 0
-        curr_dphn = 255 - curr_dphn
-        curr_dphn[curr_mask] = [0, 0, 0, 0]
-        img_center = tuple(np.array(curr_dphn.shape[1::-1]) / 2)
-        rot_mat = cv2.getRotationMatrix2D(img_center, 180 - prev_frame[i][-1], 1.0)
-        height, width = (curr_dphn.shape[0] , curr_dphn.shape[1])
-        dst_mat = np.zeros((height, width, 4), np.uint8)
-        size = (width, height)
-        curr_dphn_f = cv2.warpAffine(curr_dphn, rot_mat, size, flags=cv2.INTER_LINEAR, borderMode=cv2.BORDER_TRANSPARENT)
-        if prev_frame[i][3] == 0:
-            curr_dphn_f = curr_dphn_f * 0.5
-        elif prev_frame[i][3] == 1:
-            curr_dphn_f = curr_dphn_f * 0.2
-        else:
-            curr_dphn_f = curr_dphn_f * 0.35
-        temp = np.zeros((1024, 1280, 4), np.float32)
-        temp[int(prev_frame[i][0][1]):int(prev_frame[i][0][1]) + curr_dphn_f.shape[0], int(prev_frame[i][0][0]):int(prev_frame[i][0][0]) + curr_dphn_f.shape[1]] = curr_dphn_f
-        curr_frame = np.float32(curr_frame)
-        curr_frame -= temp
+        curr_dphn = cv2.imread(name + '/daphnia_gallery/' + str(i) + ".png")
+        im_new, mask, w, h = daph_gallery.create_daphnia_image_homography(i, name, [2*prev_frame[i][2], 2*prev_frame[i][1], prev_frame[i][-1]])
+        mean = cv2.mean(curr_frame[int(prev_frame[i][0][1]):int(prev_frame[i][0][1]) + h, int(prev_frame[i][0][0]):int(prev_frame[i][0][0]) + w])
+        im_new = im_new - mean[0]
+        locs = np.where(mask != False)
+        curr_frame[int(prev_frame[i][0][0]) + locs[0], int(prev_frame[i][0][1]) + locs[1]] = im_new[locs[0], locs[1]]
         '''
         if FRAMES_NO_TURN_3D == 0:
             curr.append(patches.Ellipse(prev_frame[i][0], prev_frame[i][1] + random.choice(xFlucts * fps_coef),
@@ -472,4 +453,4 @@ def create_clip(fps, objects, time, clip_name, velocities, turn_rates, lights_on
 
 
 if __name__ == '__main__':
-    create_clip(20, 30, 10, "dirtest", velocities, turn_rates, [3], [7])
+    create_clip(20, 5, 10, "dirtest", velocities, turn_rates, [3], [7])
