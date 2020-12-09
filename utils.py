@@ -23,7 +23,7 @@ def generate_2d_gauss(center, cov, w=1024, h=1280):
 
 
 def generate_light_distribution(center, intencity, size=(1, 1), w=1280, h=1024):
-    print("Light generating starts..")
+    print("No .ld file found, generating starts")
     start_time = time()
     field = np.zeros((h, w))
     light_source = []
@@ -43,12 +43,19 @@ def generate_light_distribution(center, intencity, size=(1, 1), w=1280, h=1024):
                     continue
                 field[i][j] += intencity * ((max_dist - distance) / max_dist)
     print(f"Light generating finished in {time() - start_time}s")
+    with open("samples/light.ld", 'wb') as f:
+        np.save(f, field)
     return field
-
+    
 
 class LightSystem:
     def __init__(self, intensity, center=(0, 0)):
-        self.light_distribution = generate_light_distribution(center, intensity)
+        try:
+            with open("samples/light.ld", 'rb') as f:
+                self.light_distribution = np.load(f)
+            print("Light loaded.")
+        except:
+            self.light_distribution = generate_light_distribution(center, intensity)
         self.light_enabled = 0
         self.light_indexer = 0
         self.current_light_distribution = None
@@ -105,7 +112,8 @@ class LightSystem:
                 v[v <= lim] += np.uint8(self.current_light_distribution[v <= lim])
 
         hsv = cv2.merge((h, s, v))
-        return cv2.flip(cv2.cvtColor(hsv, cv2.COLOR_HSV2BGR), 0)
+        #return cv2.flip(cv2.cvtColor(hsv, cv2.COLOR_HSV2BGR), 0)
+        return cv2.cvtColor(hsv, cv2.COLOR_HSV2BGR)
 
 
 if __name__ == '__main__':

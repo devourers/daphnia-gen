@@ -59,7 +59,7 @@ yGenPos = np.random.normal(251, 60.25, 1000)
 #yGenPos = np.random.uniform(10, 512, 1000)
 heatmap_gen = np.zeros((1024, 1280), dtype = np.float32)
 total_heatmap = np.zeros((1024, 1280), dtype = np.float32)
-'''
+
 for x in xGenPos:
     for y in yGenPos:
         heatmap_gen[1022 - (int(y) - 1)][int(x + 1)] += 1
@@ -71,7 +71,7 @@ for x in xGenPos:
         heatmap_gen[1022 - (int(y + 1) - 1)][int(x + 1)] += 1
         heatmap_gen[1022 - (int(y + 1) - 1)][int(x - 1)] += 1
         heatmap_gen[1022 - (int(y + 1) - 1)][int(x)] += 1
-'''
+
 
 FRAMES_NO_TURN = 0
 FRAMES_NO_TURN_3D = 0
@@ -130,8 +130,8 @@ def switch_LIGHT():
 def frame_TRANSITION(fps_coef):
     global FRAMES_NO_TURN
     global FRAMES_NO_TURN_3D
-    FRAMES_NO_TURN = (FRAMES_NO_TURN + 1) % (4 * fps_coef)
-    FRAMES_NO_TURN_3D = (FRAMES_NO_TURN_3D + 1) % (4 * fps_coef * 2)
+    FRAMES_NO_TURN = (FRAMES_NO_TURN + 1) % (3 * fps_coef)
+    FRAMES_NO_TURN_3D = (FRAMES_NO_TURN_3D + 1) % (3 * fps_coef * 2)
 
 
 def check_segment(daphnia):
@@ -240,7 +240,7 @@ def create_frame(ID, name, prev_frame, velocities, turn_rates, fps_coef):
     ax.set_xlim(0, 1280)
     ax.set_ylim(0, 1024)
     ax.set_aspect('equal')
-    light_system.increase_brightness(BG_IMG.copy())
+    #light_system.increase_brightness(BG_IMG.copy())
     """if LIGHT_ON:
         ax.imshow(increase_brightness(BG_IMG.copy(), light_distribution=LIGHT_DISTRIBUTION))
     else:
@@ -270,7 +270,8 @@ def create_frame(ID, name, prev_frame, velocities, turn_rates, fps_coef):
         #print(curr_frame[int(prev_frame[i][0][1]) + locs[1], int(prev_frame[i][0][0]) + locs[0]])
         all_min = np.amin(curr_frame_2)
         all_max = np.amax(curr_frame_2)
-        mean = cv2.mean(curr_frame_2[int(prev_frame[i][0][1]) + locs[1], int(prev_frame[i][0][0]) + locs[0]])
+        #mean = cv2.mean(curr_frame_2[int(prev_frame[i][0][1]) + locs[1], int(prev_frame[i][0][0]) + locs[0]])
+        mean = cv2.mean(curr_frame_2[974:1024, 0:1280])
         minu = np.amin(curr_frame_2[int(prev_frame[i][0][1]) + locs[1], int(prev_frame[i][0][0]) + locs[0]])
         var = np.var(curr_frame_2[int(prev_frame[i][0][1]) + locs[1], int(prev_frame[i][0][0]) + locs[0]])
         maxu = np.amax(curr_frame_2[int(prev_frame[i][0][1]) + locs[1], int(prev_frame[i][0][0]) + locs[0]])
@@ -293,6 +294,7 @@ def create_frame(ID, name, prev_frame, velocities, turn_rates, fps_coef):
         #print(all_max)
         for k in range(len(ground)):
             for j in range(len(ground[k])):
+                #ground[k][j] = mean[0]
                 ground[k][j] = mean[0]
         #print(ground)
         #if prev_frame[i][3] == 1:
@@ -302,7 +304,7 @@ def create_frame(ID, name, prev_frame, velocities, turn_rates, fps_coef):
         #cv2.waitKey(0)        
         for k in range(len(im_new)):
             for j in range(len(im_new[k])):
-                im_new[k][j] = np.clip(int(ground[k][j]) - im_new[k][j], all_min, 255)
+                im_new[k][j] = np.clip(1.0 / 255 * im_new[k][j] * (ground[k][j] - 0.5 * im_new[k][j]) + 1.0 / 255* (255 - im_new[k][j]) * curr_frame[int(prev_frame[i][0][1]) + k, int(prev_frame[i][0][0]) + j], 0, 255)
                 #im_new[k][j] = int(ground[k][j]) - im_new[k][j]
         #if prev_frame[i][3] == 1:
 
@@ -311,13 +313,13 @@ def create_frame(ID, name, prev_frame, velocities, turn_rates, fps_coef):
         #im_new = im_new - minu
         #cv2.imshow("wffd", im_new)
         #cv2.waitKey(0)        
-        im_new = 255 - im_new
+        #im_new = 255 - im_new
         #mm = np.full((h, w), minu, dtype = np.uint8)
         for k in range(len(im_new)):
             for j in range(len(im_new[k])):
                 #sec_value = np.clip(curr_frame[int(prev_frame[i][0][1] + j), int(prev_frame[i][0][0] + k)] - im_new[k][j], 0, 255)
                 #im_new[k][j] = min(curr_frame_2[int(prev_frame[i][0][1] + j), int(prev_frame[i][0][0] + k)], np.clip(int(mean[0]) - im_new[k][j], all_min, 255))
-                im_new[k][j] = min(curr_frame_2[int(prev_frame[i][0][1] + j), int(prev_frame[i][0][0] + k)], im_new[k][j])
+                im_new[k][j] = min(curr_frame[int(prev_frame[i][0][1] + j), int(prev_frame[i][0][0] + k)], im_new[k][j])
                 #im_new[k][j] = np.clip(im_new[k][j], 75, 195)
                 #im_new[k][j] = min(curr_frame[int(prev_frame[i][0][1] + j), int(prev_frame[i][0][0] + k)], sec_value)
         #print(im_new)
@@ -325,8 +327,8 @@ def create_frame(ID, name, prev_frame, velocities, turn_rates, fps_coef):
         #if prev_frame[i][3] != 0:
         #    im_new = im_new * 1.2
         #    im_new = np.clip(im_new, mean[0]/1.5, mean[0])
-        im_new = 255 - im_new
-        im_new = np.clip(im_new, 0, mean[0])
+        #im_new = 255 - im_new
+        #im_new = np.clip(im_new, 0, mean[0])
         #im_new = np.clip(im_new, all_min, all_max)
         #print(im_new)
         #aaaaa = int(input())

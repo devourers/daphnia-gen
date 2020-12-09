@@ -57,18 +57,18 @@ def create_daphnia_image(ID, clip, ratio_x, ratio_y, seed):
     img_l = cv2.normalize(img_l, img_l, alpha=1, beta=0, norm_type=cv2.NORM_MINMAX)
     m = 0.1
     sigma = 0.2
-    noise_05 = np.zeros((int(size/5), int(size/5)), np.float32)
+    #noise_05 = np.zeros((int(size/5), int(size/5)), np.float32)
     noise_10 = np.zeros((int(size/10), int(size/10)), np.float32)
     noise_25 = np.zeros((int(size/25), int(size/25)), np.float32)
-    cv2.randn(noise_05, m, sigma)
+    #cv2.randn(noise_05, m, sigma)
     cv2.randn(noise_10, m, sigma)
     cv2.randn(noise_25, m, sigma)
     noise_scaled = cv2.resize(noise_25, (size, size))
     noise = noise_scaled.copy()
     noise_scaled = cv2.resize(noise_10, (size, size))
     noise += noise_scaled
-    noise_scaled = cv2.resize(noise_05, (size, size))
-    noise += noise_scaled
+    #noise_scaled = cv2.resize(noise_05, (size, size))
+    #noise += noise_scaled
     img_l = img_l + np.multiply(img_l, noise)
     img_l = cv2.normalize(img_l, img_l, alpha=1, beta=0, norm_type=cv2.NORM_MINMAX)
     #cv2.imshow("test", img_l)
