@@ -55,8 +55,8 @@ def create_daphnia_image(ID, clip, ratio_x, ratio_y, seed):
     img_l = img_l + np.multiply(img_l, img_dt)
     
     img_l = cv2.normalize(img_l, img_l, alpha=1, beta=0, norm_type=cv2.NORM_MINMAX)
-    m = 0.5
-    sigma = 0.5
+    m = 0.1
+    sigma = 0.2
     noise_05 = np.zeros((int(size/5), int(size/5)), np.float32)
     noise_10 = np.zeros((int(size/10), int(size/10)), np.float32)
     noise_25 = np.zeros((int(size/25), int(size/25)), np.float32)
@@ -83,61 +83,75 @@ def create_daphnia_image(ID, clip, ratio_x, ratio_y, seed):
     #backtorgb = cv2.cvtColor(img_l,cv2.COLOR_BGR2BGRA)
     #backtorgb[:, :, 3] = gray
     ID = str(ID)
-    #cv2.imwrite(clip  +'/daphnia_gallery/' + ID + ".png", 255*img_l)
-    cv2.imwrite("test_orig.png", 255*img_l)
+    cv2.imwrite(clip  +'/daphnia_gallery/' + ID + ".png", 255*img_l)
+    #cv2.imwrite("test_orig.png", 255*img_l)
     outfile = [y_top_saved, y_bot_saved]
-    #with open(clip + '/daphnia_gallery/' + ID + ".dphn", 'wb') as f:
-    with open("ys.dphn", 'wb') as f:
+    with open(clip + '/daphnia_gallery/' + ID + ".dphn", 'wb') as f:
+    #with open("ys.dphn", 'wb') as f:
         np.save(f, outfile)
     
 
-def find_points(a, b, angle):
-    points = []
-    points.append([int(25 + 0.5 * b * math.sin(angle * math.pi / 180) + 0.5 * a * math.sin(0.5 * math.pi + math.pi * angle / 180)), int(25 - 0.5 * b * math.cos(math.pi * angle / 180) + 0.5 * a * math.cos(0.5 * math.pi + math.pi * angle / 180))])
-    points.append([int(points[0][0] - b * math.sin(angle * math.pi / 180)), int(points[0][1] + b * math.sin(angle * math.pi / 180))])
-    points.append([int(points[1][0] - a * math.sin(0.5 * math.pi + angle * math.pi / 180)), int(points[1][1] - a * math.sin(0.5 * math.pi + angle * math.pi / 180))])
-    points.append([int(points[0][0] - a * math.sin(0.5 * math.pi + angle * math.pi / 180)), int(points[0][1] - a * math.sin(0.5 * math.pi + angle * math.pi / 180))])
-    return [[points[0][1], points[0][0]], [points[1][1], points[1][0]], [points[2][1], points[2][0]], [points[3][1], points[3][0]]]
-
 def create_daphnia_image_homography(ID, clip, measures):
+    #angle = measures[2]
+    #if measures[2] > 90:
+    angle = measures[2] - 360
     ID = str(ID)
-    #orig = cv2.imread(clip  +'/daphnia_gallery/' + ID + ".png")
-    orig = cv2.imread("test_orig.png")
-    #with open(clip + '/daphnia_gallery/' + ID + ".dphn", 'rb') as f:
-    with open("ys.dphn", 'rb') as f:
+    orig = cv2.imread(clip  +'/daphnia_gallery/' + ID + ".png")
+    #orig = cv2.imread("test_orig.png")
+    with open(clip + '/daphnia_gallery/' + ID + ".dphn", 'rb') as f:
+    #with open("ys.dphn", 'rb') as f:
         saved = np.load(f)
     dest = np.zeros((50, 50), np.float32)
-    if measures[2] > 90:
-        measures[2] = measures[2] % 90
-    dest_points = find_points(measures[0], measures[1], measures[2])
-    print(dest_points)
     orig_points = [[0, saved[1]], [200, saved[1]], [200, saved[0]], [0, saved[0]]]
-    dp = cv2.UMat(np.array(dest_points, dtype=np.uint8))
-    op = cv2.UMat(np.array(orig_points, dtype=np.uint8))
-    h, status = cv2.findHomography(op, dp)
-    im_out = cv2.warpPerspective(orig, h, (dest.shape[1],dest.shape[0]))
-    im_out = cv2.cvtColor(im_out, cv2.COLOR_RGB2GRAY)
-    cv2.imshow("test", im_out)
-    cv2.waitKey(0)
-    ret,thresh = cv2.threshold(im_out,1,255,0)
-    cv2.imshow("bbox", ret)
-    cv2.waitKey(0)
+    #orig = orig[int(saved[0]):int(saved[1]), 0:200]
+    orig_points = np.array(orig_points)
+    M = cv2.getRotationMatrix2D((100, (saved[0] + saved[1])/2), angle, 1)
+    dst = cv2.warpAffine(orig, M, (orig.shape[1], orig.shape[0]))
+    #dst = cv2.resize
+    #dst = cv2.UMat(np.array((dst), np.uint8))
+    #cv2.imshow("qegveqdfsawx", dst)
+    #cv2.waitKey(0)
+    #dp = cv2.UMat(np.array(dest_points, dtype=np.uint8))
+    #op = cv2.UMat(np.array(orig_points, dtype=np.uint8))
+    #h, status = cv2.findHomography(op, dp)
+    #im_out = cv2.warpPerspective(orig, h, (dest.shape[1],dest.shape[0]))
+    #im_out = cv2.cvtColor(im_out, cv2.COLOR_RGB2GRAY)
+    #cv2.imshow("test", im_out)
+    #cv2.waitKey(0)
+
+    #cv2.imshow("bbox", ret)
+    #cv2.waitKey(0)
+    dst = cv2.cvtColor(dst, cv2.COLOR_RGB2GRAY)
+    ret,thresh = cv2.threshold(dst,1,255,0)
     contours,hierarchy = cv2.findContours(thresh, cv2.RETR_TREE, cv2.CHAIN_APPROX_SIMPLE)    
     cnt = contours[0]
     x,y,w,h = cv2.boundingRect(cnt)
-    im_new = im_out[y:y+h, x:x+w]
-    mask = im_new > 0
+    im_new = dst[y:y+h, x:x+w]
+    #print(im_new)
+    #print(mask)
+    #print(m)
+    #cv2.imshow("wfeds", im_new)
+    #cv2.waitKey(0)
+    if (abs(angle) >= 260 and abs(angle) <= 270) or (abs(angle) >= 80 and abs(angle) <= 100):
+        im_new = cv2.resize(im_new, (measures[0], measures[1]), 0.0, 0.0, cv2.INTER_LINEAR)
+        ground = np.zeros((measures[1], measures[0]), np.uint8)
+    else:
+        im_new = cv2.resize(im_new, (measures[1], measures[0]), 0.0, 0.0, cv2.INTER_LINEAR)
+        ground = np.zeros((measures[0], measures[1]), np.uint8)
+    #print(im_new)
+    mask = (im_new != 0)
     #print(mask)
     #mask = cv2.UMat(np.array((mask), np.uint8))
-    #m = np.asarray(mask)
-    #print(m)
+    m = np.asarray(mask)
+    #print(mask)
     #cv2.imshow("fadcx", mask)
-    ground = np.zeros((h, w), np.uint8)
-    cv2.randn(ground, 5, 0.2)
-    im_new = ground - im_new
+    #cv2.waitKey(0)    
+    #cv2.imshow("wfeds", im_new)
+    #cv2.waitKey(0)
+    #ground = np.zeros((measures[0], measures[1]), np.uint8)
     #cv2.imshow("dbfvd", im_new)
     #cv2.waitKey(0)    
-    return [im_new, mask, w, h]
+    return [im_new, mask, w, h, ground]
     
     
     
@@ -145,5 +159,5 @@ def create_daphnia_image_homography(ID, clip, measures):
     
 if __name__ == '__main__':
     create_daphnia_image(0, "test", 1, 1, 1337)
-    create_daphnia_image_homography(0, "test", [10, 20, 67])
-    
+    create_daphnia_image_homography(0, "test", [17, 20, 83])
+    create_daphnia_image_homography(0, "test", [17, 20, -283])

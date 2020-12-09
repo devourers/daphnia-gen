@@ -12,10 +12,11 @@ import seaborn as sns
 
 from utils import LightSystem
 
-BG_IMG = cv2.imread('samples/bg_sample.png', cv2.IMREAD_UNCHANGED)
+BG_IMG = cv2.imread('samples/bg_sample_1.png', cv2.IMREAD_UNCHANGED)
 SEGMENTS = {0: 'center.', 1: 'cells.', 2: 'boundaries.'}
 STATUS = {0: 'Non-medicated', 1: 'Medicated'}
 GENDER = ['MALE', 'FEMALE']
+CLIP_MINS = {0: 75, 1: 0, 2: 45}
 
 LIGHT = {0: 'off.', 1: 'on.'}
 LIGHT_ON = 0
@@ -143,10 +144,12 @@ def check_segment(daphnia):
 
 
 def gen_daphnia(velocities, fps_coef):
-    radiusX = random.choice(bigPlane)
-    radiusX = 10
+    radiusX = int(random.choice(bigPlane))
+    if radiusX > 10:
+        radiusX = 10
+    #radiusX = 5
     radiusY = random.choice(smallPlane)
-    radiusY = 5
+    radiusY = int(radiusX * (6/10))
     velocity = random.choice(velocities)
     if velocity > 10 * fps_coef:
         velocity = 10 * fps_coef
@@ -189,8 +192,8 @@ def move_daphnia(daphnia, velocities, turn_rates, fps_coef):
         daphnia[0][0] = 1175
         daphnia[-1] = random.choice(rightAngles) + random.choice(turn_rates) * 180 / math.pi * fps_coef
 
-    if daphnia[0][1] > 1000:
-        daphnia[0][1] = 995
+    if daphnia[0][1] > 990:
+        daphnia[0][1] = 985
         daphnia[-1] = random.choice(upAngles) + random.choice(turn_rates) * 180 / math.pi * fps_coef
 
     if daphnia[0][0] <= 30:
@@ -245,7 +248,11 @@ def create_frame(ID, name, prev_frame, velocities, turn_rates, fps_coef):
     ells = []
     #frame_TRANSITION(1 / fps_coef)
     curr_frame = BG_IMG.copy()
+    curr_frame_2 = BG_IMG.copy()
+    curr_frame = light_system.increase_brightness(curr_frame)
     curr_frame = cv2.cvtColor(curr_frame, cv2.COLOR_RGB2GRAY)
+    curr_frame_2 = light_system.increase_brightness(curr_frame_2)
+    curr_frame_2 = cv2.cvtColor(curr_frame_2, cv2.COLOR_RGB2GRAY)
     for i in range(len(prev_frame)):
         curr = []
         if prev_frame[i][4] < 0.8:
@@ -258,11 +265,90 @@ def create_frame(ID, name, prev_frame, velocities, turn_rates, fps_coef):
         move_daphnia(prev_frame[i], velocities, turn_rates, fps_coef)
            
         curr_dphn = cv2.imread(name + '/daphnia_gallery/' + str(i) + ".png")
-        im_new, mask, w, h = daph_gallery.create_daphnia_image_homography(i, name, [2*prev_frame[i][2], 2*prev_frame[i][1], prev_frame[i][-1]])
-        mean = cv2.mean(curr_frame[int(prev_frame[i][0][1]):int(prev_frame[i][0][1]) + h, int(prev_frame[i][0][0]):int(prev_frame[i][0][0]) + w])
-        im_new = im_new - mean[0]
+        im_new, mask, w, h, ground = daph_gallery.create_daphnia_image_homography(i, name, [2*prev_frame[i][2], 2*prev_frame[i][1], 90 + prev_frame[i][-1]])
         locs = np.where(mask != False)
-        curr_frame[int(prev_frame[i][0][0]) + locs[0], int(prev_frame[i][0][1]) + locs[1]] = im_new[locs[0], locs[1]]
+        #print(curr_frame[int(prev_frame[i][0][1]) + locs[1], int(prev_frame[i][0][0]) + locs[0]])
+        all_min = np.amin(curr_frame_2)
+        all_max = np.amax(curr_frame_2)
+        mean = cv2.mean(curr_frame_2[int(prev_frame[i][0][1]) + locs[1], int(prev_frame[i][0][0]) + locs[0]])
+        minu = np.amin(curr_frame_2[int(prev_frame[i][0][1]) + locs[1], int(prev_frame[i][0][0]) + locs[0]])
+        var = np.var(curr_frame_2[int(prev_frame[i][0][1]) + locs[1], int(prev_frame[i][0][0]) + locs[0]])
+        maxu = np.amax(curr_frame_2[int(prev_frame[i][0][1]) + locs[1], int(prev_frame[i][0][0]) + locs[0]])
+        im_new = np.clip(im_new, all_min, 255)
+        #mean = cv2.mean(curr_frame[int(prev_frame[i][0][1]):int(prev_frame[i][0][1]) + h, int(prev_frame[i][0][0]):int(prev_frame[i][0][0]) + w])
+        #minu = np.amin(curr_frame[int(prev_frame[i][0][1]):int(prev_frame[i][0][1]) + h, int(prev_frame[i][0][0]):int(prev_frame[i][0][0]) + w])
+        #print(mean)
+        #print(minu)
+        #aaaaa = int(input())
+        #im_new = im_new + (255 - mean[0])/3
+        #print(mean)
+        #im_new = 255 - im_new
+        #for i in range(len(im_new)):
+        #    for j in range(len(im_new[i])):
+        #        im_new[i][j] = np.clip(im_new[i][j], 17, 190())
+        #cv2.imshow("wffd", im_new)
+        #cv2.waitKey(0)
+        #cv2.randn(ground, mean[0], var)
+        #print(all_min)
+        #print(all_max)
+        for k in range(len(ground)):
+            for j in range(len(ground[k])):
+                ground[k][j] = mean[0]
+        #print(ground)
+        #if prev_frame[i][3] == 1:
+        #    print(ground)
+        #    aaaaa = int(input())
+        #cv2.imshow("im_new", im_new)
+        #cv2.waitKey(0)        
+        for k in range(len(im_new)):
+            for j in range(len(im_new[k])):
+                im_new[k][j] = np.clip(int(ground[k][j]) - im_new[k][j], all_min, 255)
+                #im_new[k][j] = int(ground[k][j]) - im_new[k][j]
+        #if prev_frame[i][3] == 1:
+
+        #cv2.imshow("wffd", im_new
+        #cv2.waitKey(0)
+        #im_new = im_new - minu
+        #cv2.imshow("wffd", im_new)
+        #cv2.waitKey(0)        
+        im_new = 255 - im_new
+        #mm = np.full((h, w), minu, dtype = np.uint8)
+        for k in range(len(im_new)):
+            for j in range(len(im_new[k])):
+                #sec_value = np.clip(curr_frame[int(prev_frame[i][0][1] + j), int(prev_frame[i][0][0] + k)] - im_new[k][j], 0, 255)
+                #im_new[k][j] = min(curr_frame_2[int(prev_frame[i][0][1] + j), int(prev_frame[i][0][0] + k)], np.clip(int(mean[0]) - im_new[k][j], all_min, 255))
+                im_new[k][j] = min(curr_frame_2[int(prev_frame[i][0][1] + j), int(prev_frame[i][0][0] + k)], im_new[k][j])
+                #im_new[k][j] = np.clip(im_new[k][j], 75, 195)
+                #im_new[k][j] = min(curr_frame[int(prev_frame[i][0][1] + j), int(prev_frame[i][0][0] + k)], sec_value)
+        #print(im_new)
+        #im_new = np.clip(im_new, CLIP_MINS[prev_frame[i][3]], 150)
+        #if prev_frame[i][3] != 0:
+        #    im_new = im_new * 1.2
+        #    im_new = np.clip(im_new, mean[0]/1.5, mean[0])
+        im_new = 255 - im_new
+        im_new = np.clip(im_new, 0, mean[0])
+        #im_new = np.clip(im_new, all_min, all_max)
+        #print(im_new)
+        #aaaaa = int(input())
+        #im_new = np.clip(im_new, 0, 255)
+        #cv2.imshow("wffd", im_new)
+        #cv2.waitKey(0)        
+        #im_new = np.clip(im_new, minu, mean[0])
+        #cv2.imshow("wffd", im_new)
+        #cv2.waitKey(0)        
+        #im_new = 255-im_new
+        #cv2.imshow("wffd", im_new)
+        #cv2.waitKey(0)        
+        #im_new = 255 - im_new
+        #if prev_frame[i][3] != 0:
+        #    im_new = im_new * 0.75
+        #print(locs)
+        curr_frame[int(prev_frame[i][0][1]) + locs[1], int(prev_frame[i][0][0]) + locs[0]] = im_new[locs[0], locs[1]]
+        #curr_frame[int(prev_frame[i][0][1]) + locs[1], int(prev_frame[i][0][0]) + locs[0]] = np.clip(curr_frame[int(prev_frame[i][0][1]) + locs[1], int(prev_frame[i][0][0]) + locs[0]], 45,  im_new[locs[0], locs[1]])
+        #print(im_new[locs[0], locs[1]])
+        #print(minu - im_new[locs[0], locs[1]])
+        #print(minu) 
+        #curr_frame[int(prev_frame[i][0][1]) + locs[1], int(prev_frame[i][0][0]) + locs[0]] = np.amin([minu - im_new[locs[0], locs[1]], minu])
         '''
         if FRAMES_NO_TURN_3D == 0:
             curr.append(patches.Ellipse(prev_frame[i][0], prev_frame[i][1] + random.choice(xFlucts * fps_coef),
@@ -301,6 +387,7 @@ def create_frame(ID, name, prev_frame, velocities, turn_rates, fps_coef):
     ID = str(ID)
     while len(ID) < 10:
         ID = '0' + ID
+    
     #ax.imshow(light_system.increase_brightness(BG_IMG.copy()))
     #curr_frame = light_system.increase_brightness(cv2.cvtColor(curr_frame, cv2.COLOR_RGBA2RGB))
     #ax.set_title("'" + name + "'@" + str(30 / fps_coef) + " fps, light " + LIGHT[light_system.light_enabled])
@@ -424,6 +511,7 @@ def create_clip(fps, objects, time, clip_name, velocities, turn_rates, lights_on
         light.set_facecolor('yellow')
         light.set_alpha(0.3)
     fig.savefig(stats_dir + "/high_mobility.png")
+    #plt.show()
     plt.close('all')    
     
     fig, ax = plt.subplots()
@@ -453,4 +541,4 @@ def create_clip(fps, objects, time, clip_name, velocities, turn_rates, lights_on
 
 
 if __name__ == '__main__':
-    create_clip(20, 5, 10, "dirtest", velocities, turn_rates, [3], [7])
+    create_clip(20, 30, 10, "dirtest", velocities, turn_rates, [1], [5])
